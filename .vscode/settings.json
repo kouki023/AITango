@@ -1,0 +1,13 @@
+{
+    "sweetpad.build.xcodeWorkspacePath": "AITango.xcodeproj/project.xcworkspace",
+    "workbench.colorCustomizations": {
+        "editor.background":"#44454A",
+        "editor.lineHighlightBackground":"#494D53",
+        "sideBar.background":"#434343"
+    },
+    "editor.tokenColorCustomizations": {
+        "comments": "#888888"
+    },
+    "editor.bracketPairColorization.enabled": false
+    
+}
