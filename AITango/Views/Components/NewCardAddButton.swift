@@ -24,8 +24,6 @@ struct CapsuleButtonStyle: ButtonStyle {
 
 
 
-
-
 struct NewCardAddButton: View{
 
     let action: () -> Void

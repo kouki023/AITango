@@ -239,6 +239,7 @@ struct SRSButtonStyle: ButtonStyle {
 }
 
 // --- プレビュー ---
+#if DEBUG
 #Preview("Spaced Repetition Learning View") {
   NavigationView {  // Preview 用に NavigationView でラップ
     // PreviewContainerのヘルパーを使って復習カードを取得
@@ -255,3 +256,4 @@ struct SRSButtonStyle: ButtonStyle {
   }
   .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
 }
+#endif

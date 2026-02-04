@@ -45,6 +45,7 @@ struct WordCardRow: View {
 }
 
 // プレビュー
+#if DEBUG
 #Preview {
     List { // リスト内での表示を確認
         WordCardRow(card: PreviewContainer.sampleCards[0])
@@ -55,3 +56,4 @@ struct WordCardRow: View {
     // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
     .listStyle(.plain)
 }
+#endif

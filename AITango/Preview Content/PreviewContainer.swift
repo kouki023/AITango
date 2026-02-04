@@ -1,5 +1,5 @@
 // Cursor_Test/Preview Content/PreviewContainer.swift
-
+#if DEBUG
 import SwiftData
 import SwiftUI // @MainActor のために必要
 
@@ -133,3 +133,4 @@ extension PreviewContainer {
         return cards
     }
 }
+#endif

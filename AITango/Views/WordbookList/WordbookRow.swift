@@ -74,6 +74,7 @@ struct WordbookRow: View {
 }
 
 // プレビュー
+#if DEBUG
 #Preview {
   // Listの中に表示させる形でのプレビュー
   List {
@@ -85,3 +86,4 @@ struct WordbookRow: View {
   // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
   .listStyle(.plain)  // プレビュー用のリストスタイル
 }
+#endif

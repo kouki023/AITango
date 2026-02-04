@@ -188,7 +188,9 @@ struct LearningTabView: View {
 }
 
 // プレビューコード (変更なし、新しいコンポーネントが反映される)
+#if DEBUG
 #Preview("Learning Tab View - Using CapsuleSegmentedControl") {
     LearningTabView(selectedMode: .normal)
         .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
 }
+#endif

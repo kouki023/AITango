@@ -97,9 +97,11 @@ struct WordCardEditView: View {
 }
 
 // プレビュー
+#if DEBUG
 #Preview {
     // 編集対象のカードを渡す
     WordCardEditView(wordCard: PreviewContainer.sampleCards[1])
         .modelContainer(PreviewContainer.previewInMemoryWithLinkedData) // 関連データ付きコンテナ
         // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
 }
+#endif

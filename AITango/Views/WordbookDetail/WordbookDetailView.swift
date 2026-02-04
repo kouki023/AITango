@@ -178,6 +178,7 @@ struct WordbookDetailView: View {
 }
 
 // WordbookDetailView のプレビュー
+#if DEBUG
 #Preview {
   // NavigationStack内でプレビュー
   NavigationStack {
@@ -194,3 +195,5 @@ struct WordbookDetailView: View {
   }
   .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
 }
+#endif
+

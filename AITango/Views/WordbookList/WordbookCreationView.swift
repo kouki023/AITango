@@ -54,8 +54,10 @@ struct WordbookCreationView: View {
 }
 
 // プレビュー
+#if DEBUG
 #Preview {
     WordbookCreationView()
         .modelContainer(PreviewContainer.previewInMemory) // コンテナ設定
         // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
 }
+#endif

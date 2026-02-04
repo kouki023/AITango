@@ -159,6 +159,7 @@ struct WordbookListView: View {
 }
 
 // プレビュー
+#if DEBUG
 #Preview("List With Data") {
   WordbookListView()
     .modelContainer(PreviewContainer.previewInMemory)  // PreviewContainerを使用
@@ -170,3 +171,4 @@ struct WordbookListView: View {
     .modelContainer(PreviewContainer.empty)  // 空のコンテナを使用
   // .modelContainer(previewContainerEmpty) // PreviewContainer.swift を使う場合
 }
+#endif

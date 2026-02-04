@@ -213,6 +213,7 @@ struct LearningView: View {
 }
 
 // プレビュー用
+#if DEBUG
 #Preview {
      // NavigationStack内でプレビューしないとタイトルが表示されない場合がある
      NavigationStack {
@@ -222,3 +223,4 @@ struct LearningView: View {
      // 関連データ付きのコンテナを使用
      .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
 }
+#endif

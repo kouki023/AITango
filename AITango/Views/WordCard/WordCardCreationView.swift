@@ -16,7 +16,7 @@ struct WordCardCreationView: View {
     var wordbook: Wordbook // カードを追加する対象の単語帳
 
     // --- ▼▼▼ State変数を追加 ▼▼▼ ---
-    @State private var selectedMode: CreationMode = .automatic // 現在のモード
+    @State private var selectedMode: CreationMode = .manual // 現在のモード
     @Namespace private var creationModeNamespace // セグメントコントロール用
 
     // 手動入力用
@@ -279,6 +279,7 @@ struct WordCardCreationView: View {
 }
 
 // --- ▼▼▼ プレビュー用の調整 ▼▼▼ ---
+#if DEBUG
 #Preview("Manual Mode") {
     // NavigationStack で囲むとタイトルが表示されやすい
     NavigationStack {
@@ -294,4 +295,5 @@ struct WordCardCreationView: View {
             .modelContainer(PreviewContainer.previewInMemory)
     }
 }
+#endif
 // --- ▲▲▲ プレビューここまで ▲▲▲ ---

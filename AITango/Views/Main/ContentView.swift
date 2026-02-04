@@ -53,6 +53,7 @@ struct ContentView: View {
 }
 
 // プレビュー設定
+#if DEBUG
 #Preview {
     ContentView()
         // プレビュー用にインメモリのModelContainerを使用
@@ -60,3 +61,5 @@ struct ContentView: View {
         // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
         .colorScheme(.dark)
 }
+#endif
+

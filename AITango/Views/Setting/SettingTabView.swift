@@ -5,6 +5,11 @@ struct SettingTabView: View {
 
   @Environment(\.requestReview) var requestReview
 
+  var AppVersion: String {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    return version
+  }
+
   var body: some View {
     NavigationStack {
       Form {
@@ -13,7 +18,7 @@ struct SettingTabView: View {
             Text("バージョン")
               .fontWeight(.medium)
             Spacer()
-            Text("1.0.0")
+            Text("\(AppVersion)")
               .foregroundStyle(Color.gray)
               .fontWeight(.medium)
           }
@@ -28,6 +33,7 @@ struct SettingTabView: View {
     }
 
   }
+
 }
 
 // SwiftUIプレビュー用のコード
