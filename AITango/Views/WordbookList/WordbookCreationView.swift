@@ -1,63 +1,149 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WordbookCreationView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss // シートを閉じるための環境変数
-    @State private var wordbookTitle: String = "" // 入力されるタイトルを保持する状態変数
+  @Environment(\.modelContext) private var modelContext
+  @Environment(\.dismiss) private var dismiss
+  @State private var wordbookTitle: String = ""
+  @FocusState private var isTitleFocused: Bool
 
-    var isSaveDisabled: Bool {
-        // タイトルが空か空白文字のみの場合は保存ボタンを無効化
-        wordbookTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
+  var isSaveDisabled: Bool {
+    wordbookTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
 
-    var body: some View {
-        NavigationStack {
-            Form { // フォーム形式で入力欄を配置
-                TextField("単語帳のタイトル", text: $wordbookTitle)
-            }
-            .navigationTitle("新しい単語帳")
-            .navigationBarTitleDisplayMode(.inline) // タイトルをインライン表示
-            .toolbar {
-                // キャンセルボタン
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("キャンセル") {
-                        dismiss() // シートを閉じる
-                    }
-                }
-                // 保存ボタン
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("保存") {
-                        saveWordbook() // 保存処理を呼び出し
-                    }
-                    .disabled(isSaveDisabled) // 保存無効化の条件を適用
-                }
-            }
+  var body: some View {
+    NavigationStack {
+      VStack(spacing: 0) {
+        // ヘッダーイラスト
+        VStack(spacing: 16) {
+          ZStack {
+            Circle()
+              .fill(
+                LinearGradient(
+                  gradient: Gradient(colors: [
+                    Color.blue.opacity(0.15),
+                    Color.purple.opacity(0.1),
+                  ]),
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+              .frame(width: 80, height: 80)
+
+            Image(systemName: "book.closed.fill")
+              .font(.system(size: 36))
+              .foregroundStyle(
+                LinearGradient(
+                  colors: [.blue, .purple],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+          }
+
+          Text("新しい単語帳を作成")
+            .font(.title3)
+            .fontWeight(.semibold)
         }
+        .padding(.top, 32)
+        .padding(.bottom, 24)
+
+        // 入力フォーム
+        VStack(alignment: .leading, spacing: 8) {
+          Text("タイトル")
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+
+          TextField("例: TOEIC英単語、日常会話フレーズ", text: $wordbookTitle)
+            .font(.body)
+            .padding(16)
+            .background(
+              RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+            )
+            .overlay(
+              RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                  isTitleFocused ? Color.blue : Color.clear,
+                  lineWidth: 2
+                )
+            )
+            .focused($isTitleFocused)
+        }
+        .padding(.horizontal, 24)
+
+        Spacer()
+
+        // 保存ボタン
+        Button {
+          saveWordbook()
+        } label: {
+          HStack {
+            Image(systemName: "checkmark.circle.fill")
+            Text("作成する")
+          }
+          .font(.headline)
+          .foregroundStyle(.white)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 16)
+          .background(
+            Group {
+              if isSaveDisabled {
+                Color.gray.opacity(0.4)
+              } else {
+                LinearGradient(
+                  colors: [.blue, Color(red: 0.4, green: 0.5, blue: 0.95)],
+                  startPoint: .leading,
+                  endPoint: .trailing
+                )
+              }
+            }
+          )
+          .clipShape(RoundedRectangle(cornerRadius: 14))
+          .shadow(
+            color: isSaveDisabled ? .clear : .blue.opacity(0.3),
+            radius: 10,
+            x: 0,
+            y: 5
+          )
+        }
+        .disabled(isSaveDisabled)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 32)
+      }
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .navigationBarLeading) {
+          Button {
+            dismiss()
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+              .font(.title2)
+              .foregroundStyle(.secondary)
+          }
+        }
+      }
+      .onAppear {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+          isTitleFocused = true
+        }
+      }
     }
+  }
 
-    // 保存処理
-    private func saveWordbook() {
-        let trimmedTitle = wordbookTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let newWordbook = Wordbook(title: trimmedTitle) // 新しいWordbookオブジェクトを作成
-        modelContext.insert(newWordbook) // ModelContextに挿入 (SwiftDataがDB保存を管理)
-
-        // Optional: エラーハンドリングを追加する場合
-        // do {
-        //     try modelContext.save() // 明示的に保存
-        // } catch {
-        //     print("Failed to save wordbook: \(error)")
-        // }
-
-        dismiss() // シートを閉じる
-    }
+  private func saveWordbook() {
+    let trimmedTitle = wordbookTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    let newWordbook = Wordbook(title: trimmedTitle)
+    modelContext.insert(newWordbook)
+    dismiss()
+  }
 }
 
 // プレビュー
 #if DEBUG
-#Preview {
+  #Preview {
     WordbookCreationView()
-        .modelContainer(PreviewContainer.previewInMemory) // コンテナ設定
-        // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
-}
+      .modelContainer(PreviewContainer.previewInMemory)
+  }
 #endif

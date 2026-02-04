@@ -2,88 +2,173 @@ import SwiftData
 import SwiftUI
 
 struct WordbookRow: View {
-  // @Bindable を使うと View 内で直接 Wordbook のプロパティを変更できる場合に便利
   @Bindable var wordbook: Wordbook
 
-  var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text(wordbook.title)
-            .font(.title3)  // 見出しスタイル
-            .fontWeight(.bold)
-            //.foregroundColor(.white) // Set title text color to white
-            .padding(.horizontal)
-            
-
-      // 単語数と最終学習日を横並びで表示
-      HStack {
-        Label("\(wordbook.wordCount) 単語", systemImage: "list.bullet")
-           //.foregroundColor(.white)// Set label text color to white
-          
-        Spacer()  // スペースで右寄せ
-        if let lastStudied = wordbook.lastStudiedAt {
-
-          Text("最終学習: \(formattedDate(from: lastStudied))")  // 日付のみ表示
-            .font(.caption)  // フォントサイズを少し小さくする (任意)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)  // 左右の余白
-            .padding(.vertical, 4)  // 上下の余白
-            .background(
-              RoundedRectangle(cornerRadius: 5)  // 角丸の長方形
-                .fill(Color.green.opacity(0.6))  // 背景色 (薄いグレー)
-            )
-        } else {
-          Text("未学習")
-            .font(.caption)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-              RoundedRectangle(cornerRadius: 5)
-                .fill(Color.orange.opacity(0.6))  // 未学習の場合も同様のスタイルを適用 (任意)
-            )
-        }
-      }
-      .padding(.horizontal)
-      .font(.subheadline)  // 小さめの文字
-      // .foregroundColor(.secondary) // Remove or comment out this line if all text in HStack should be white
-
-      // 学習進捗バー
-      ProgressView(value: wordbook.learningProgress)  // 計算プロパティを使用
-        .progressViewStyle(.linear)
-        .tint(.accentColor)  // アプリのアクセントカラーを使用
+  // 進捗に応じた色を返す
+  private var progressColor: Color {
+    let progress = wordbook.learningProgress
+    if progress >= 0.8 {
+      return Color(red: 0.2, green: 0.78, blue: 0.35)  // 緑
+    } else if progress >= 0.5 {
+      return Color(red: 0.32, green: 0.64, blue: 0.95)  // 青
+    } else if progress >= 0.3 {
+      return Color(red: 1.0, green: 0.7, blue: 0.15)  // オレンジ
+    } else {
+      return Color(red: 0.95, green: 0.4, blue: 0.45)  // 赤
     }
-      
-    .padding(.vertical, 4)  // 上下の余白
-//    .background(RoundedRectangle(cornerRadius: 10)
-//    .fill(Color.black.opacity(0.1))
-//    )
-    
   }
-        
+
+  // グラデーション背景
+  private var cardGradient: LinearGradient {
+    LinearGradient(
+      gradient: Gradient(colors: [
+        progressColor.opacity(0.15),
+        progressColor.opacity(0.05),
+      ]),
+      startPoint: .topLeading,
+      endPoint: .bottomTrailing
+    )
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      // ヘッダー: タイトルとステータスバッジ
+      HStack(alignment: .top) {
+        // 本のアイコン
+        ZStack {
+          Circle()
+            .fill(progressColor.opacity(0.2))
+            .frame(width: 44, height: 44)
+
+          Image(systemName: "book.fill")
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(progressColor)
+        }
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text(wordbook.title)
+            .font(.headline)
+            .fontWeight(.bold)
+            .foregroundStyle(.primary)
+            .lineLimit(2)
+
+          // 単語数
+          HStack(spacing: 4) {
+            Image(systemName: "textformat.abc")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+            Text("\(wordbook.wordCount)単語")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Spacer()
+
+        // 学習ステータスバッジ
+        statusBadge
+      }
+
+      // 進捗セクション
+      VStack(alignment: .leading, spacing: 6) {
+        HStack {
+          Text("学習進捗")
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+
+          Spacer()
+
+          Text("\(Int(wordbook.learningProgress * 100))%")
+            .font(.caption)
+            .fontWeight(.bold)
+            .foregroundStyle(progressColor)
+        }
+
+        // カスタム進捗バー
+        GeometryReader { geometry in
+          ZStack(alignment: .leading) {
+            // 背景
+            RoundedRectangle(cornerRadius: 4)
+              .fill(Color.gray.opacity(0.15))
+              .frame(height: 8)
+
+            // 進捗
+            RoundedRectangle(cornerRadius: 4)
+              .fill(
+                LinearGradient(
+                  gradient: Gradient(colors: [
+                    progressColor.opacity(0.8),
+                    progressColor,
+                  ]),
+                  startPoint: .leading,
+                  endPoint: .trailing
+                )
+              )
+              .frame(width: max(0, geometry.size.width * wordbook.learningProgress), height: 8)
+          }
+        }
+        .frame(height: 8)
+      }
+    }
+    .padding(16)
+    .background(
+      RoundedRectangle(cornerRadius: 16)
+        .fill(cardGradient)
+        .overlay(
+          RoundedRectangle(cornerRadius: 16)
+            .stroke(progressColor.opacity(0.2), lineWidth: 1)
+        )
+    )
+    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+  }
+
+  // 学習ステータスバッジ
+  private var statusBadge: some View {
+    HStack(spacing: 4) {
+      if let lastStudied = wordbook.lastStudiedAt {
+        Image(systemName: "checkmark.circle.fill")
+          .font(.caption2)
+        Text(formattedDate(from: lastStudied))
+          .font(.caption2)
+      } else {
+        Image(systemName: "exclamationmark.circle.fill")
+          .font(.caption2)
+        Text("未学習")
+          .font(.caption2)
+      }
+    }
+    .fontWeight(.medium)
+    .foregroundStyle(wordbook.lastStudiedAt != nil ? Color.green : Color.orange)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(
+      Capsule()
+        .fill(
+          (wordbook.lastStudiedAt != nil ? Color.green : Color.orange).opacity(0.12)
+        )
+    )
+  }
 
   // YYYY/MM/DD 形式にフォーマットするヘルパー関数
   private func formattedDate(from date: Date) -> String {
     let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy/MM/dd"  // フォーマットを指定
-    formatter.locale = Locale(identifier: "en_US_POSIX")  // ロケールを固定 (任意)
-    formatter.timeZone = TimeZone.current  // 現在のタイムゾーンを使用 (任意)
+    formatter.dateFormat = "MM/dd"
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone.current
     return formatter.string(from: date)
   }
-
-
 }
 
 // プレビュー
 #if DEBUG
-#Preview {
-  // Listの中に表示させる形でのプレビュー
-  List {
-    WordbookRow(wordbook: PreviewContainer.sampleWordbooks[0])
-    WordbookRow(wordbook: PreviewContainer.sampleWordbooks[1])
-    WordbookRow(wordbook: PreviewContainer.sampleWordbooks[2])
+  #Preview {
+    List {
+      WordbookRow(wordbook: PreviewContainer.sampleWordbooks[0])
+      WordbookRow(wordbook: PreviewContainer.sampleWordbooks[1])
+      WordbookRow(wordbook: PreviewContainer.sampleWordbooks[2])
+    }
+    .modelContainer(PreviewContainer.previewInMemory)
+    .listStyle(.plain)
   }
-  .modelContainer(PreviewContainer.previewInMemory)  // コンテナ設定を忘れずに
-  // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
-  .listStyle(.plain)  // プレビュー用のリストスタイル
-}
 #endif
