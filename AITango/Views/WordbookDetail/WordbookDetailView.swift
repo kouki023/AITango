@@ -154,7 +154,7 @@ struct WordbookDetailView: View {
           statisticsSummaryCard
         }
         .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        .listRowInsets(EdgeInsets(top: 8, leading: 4, bottom: 4, trailing: 8))
 
         // カードリスト
         Section {
