@@ -51,8 +51,6 @@ struct WordbookDetailView: View {
         cardListView
       }
     }
-    .searchable(text: $searchText, prompt: "単語を検索")
-    .searchFocused($isSearchFocused)
     .navigationTitle(wordbook.title)
     .sheet(isPresented: $showingAddCardSheet) {
       WordCardCreationView(wordbook: wordbook)
@@ -169,6 +167,8 @@ struct WordbookDetailView: View {
         }
       }
       .listStyle(.insetGrouped)
+      .searchable(text: $searchText, prompt: "単語を検索")
+      .searchFocused($isSearchFocused)
       .opacity(filteredWordCards.isEmpty && !searchText.isEmpty ? 0 : 1)
 
       // 追加ボタン
