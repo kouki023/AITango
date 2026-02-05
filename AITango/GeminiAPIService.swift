@@ -63,7 +63,7 @@ class GeminiAPIService {
             return
         }
         // モデルを設定 (例: gemini-1.5-flash) - 必要に応じてモデル名を変更してください
-        self.generativeModel = GenerativeModel(name: "gemini-2.0-flash", apiKey: apiKey)
+        self.generativeModel = GenerativeModel(name: "gemini-3-flash-preview", apiKey: apiKey)
     }
 
     func generateWords(count: Int, theme: String, frontContent: String, backContent: String) async -> Result<[GeneratedWordPair], GenerationError> {
