@@ -137,7 +137,7 @@ struct WordbookListView: View {
       }
       .searchable(text: $searchText, prompt: "単語帳を検索")
 
-      NewCardAddButton(
+      NewCardAddButton( 
         action: {
           showingAddWordbookSheet = true
         }, titleText: "New book"
