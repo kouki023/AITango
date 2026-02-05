@@ -1,226 +1,352 @@
 // Cursor_Test/Views/Learning/LearningView.swift
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct LearningView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    @Bindable var wordbook: Wordbook // @Bindable で変更を直接反映
+  @Environment(\.modelContext) private var modelContext
+  @Environment(\.dismiss) private var dismiss
+  @Bindable var wordbook: Wordbook
 
-    @State private var cardsToLearn: [WordCard] = [] // 学習対象のカード配列
-    @State private var currentIndex: Int = 0
-    @State private var showBack: Bool = false
-    // @State private var showCompletion: Bool = false // 完了画面フラグは不要になる
+  @State private var cardsToLearn: [WordCard] = []
+  @State private var currentIndex: Int = 0
+  @State private var showBack: Bool = false
+  @State private var cardOffset: CGFloat = 0
+  @State private var cardOpacity: Double = 1
 
-    // 学習対象とするカードの条件 (修正済み: 全カード対象)
-    private func loadCards() {
-         // wordbook.wordsがnilの場合や空の場合の処理
-         guard let allCards = wordbook.words, !allCards.isEmpty else {
-             // 学習するカードがない場合、即座に戻る
-             dismiss() // カードがない場合はすぐに画面を閉じる
-             return
-         }
-         // --- 修正箇所: ステータスに関わらず全てのカードを対象とする ---
-         let filteredCards = allCards // 以前のfilterを削除
+  // カードをロード
+  private func loadCards() {
+    guard let allCards = wordbook.words, !allCards.isEmpty else {
+      dismiss()
+      return
+    }
 
-         // 対象のカードがない場合 (基本的にallCards.isEmptyでチェック済みだが念のため)
-         if filteredCards.isEmpty {
-             dismiss() // フィルター結果が空でも画面を閉じる
-         } else {
-             // シャッフルして学習順序をランダムにする
-             cardsToLearn = filteredCards.shuffled()
-             currentIndex = 0
-             showBack = false
-             // showCompletion = false // 不要になった
-             // 学習開始時に単語帳の最終学習日時を更新
-             wordbook.lastStudiedAt = Date()
-         }
-     }
+    let filteredCards = allCards
 
+    if filteredCards.isEmpty {
+      dismiss()
+    } else {
+      cardsToLearn = filteredCards.shuffled()
+      currentIndex = 0
+      showBack = false
+      wordbook.lastStudiedAt = Date()
+    }
+  }
 
-    var body: some View {
-        VStack {
-            // --- 変更点：完了画面の分岐 (if showCompletion) を削除 ---
+  var body: some View {
+    ZStack {
+      // 背景グラデーション
+      LinearGradient(
+        colors: [
+          Color(uiColor: .systemBackground),
+          Color.blue.opacity(0.05),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea()
 
-            if currentIndex < cardsToLearn.count {
-                 // 現在の学習カード
-                 let currentCard = cardsToLearn[currentIndex]
+      if currentIndex < cardsToLearn.count {
+        let currentCard = cardsToLearn[currentIndex]
 
-                 VStack {
-                     // カード表示部分
-                     ZStack {
-                         RoundedRectangle(cornerRadius: 20)
-                             .fill(.background) // 背景色を利用
-                             .shadow(color: .gray.opacity(0.4), radius: 8, x: 0, y: 4)
-                             // 表面/裏面で枠線の色を変える (任意)
-                             .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(showBack ? Color.blue.opacity(0.6) : Color.green.opacity(0.6), lineWidth: 2)
-                             )
+        VStack(spacing: 0) {
+          // プログレスバー
+          progressBar
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
 
+          Spacer()
 
-                         VStack {
-                             Spacer()
-                             // 表面 or 裏面
-                             Text(showBack ? currentCard.backText : currentCard.frontText)
-                                 .font(.system(size: 40, weight: .bold))
-                                 .minimumScaleFactor(0.5) // テキストが収まるように縮小
-                                 .lineLimit(nil) // 複数行対応
-                                 .multilineTextAlignment(.center)
-                                 .padding(30) // 内側の余白
-                             Spacer()
-                             // タップで裏返すヒント
-                             if !showBack {
-                                 Text("タップして裏面を表示")
-                                     .font(.caption)
-                                     .foregroundColor(.gray)
-                                     .padding(.bottom)
-                             }
-                         }
-                         .padding(.vertical) // Vstack内の上下余白
-                     }
-                     .frame(minHeight: 250, maxHeight: 400) // カードの高さ (可変に)
-                     .padding(.horizontal, 30) // カード左右の余白
-                     .padding(.top, 20) // 上部の余白
-                     .onTapGesture {
-                        // withAnimation(.spring()) { // 少しアニメーションを追加
-                             showBack.toggle()
-                         //}
-                     }
+          // フラッシュカード
+          flashCard(for: currentCard)
+            .offset(y: cardOffset)
+            .opacity(cardOpacity)
 
-                     // 進捗表示 (任意)
-                     Text("\(currentIndex + 1) / \(cardsToLearn.count)")
-                         .font(.caption)
-                         .foregroundColor(.gray)
-                         .padding(.top)
+          Spacer()
 
-                     Spacer() // ボタンを下に配置
-
-                     // 操作ボタン (裏面表示時のみ)
-                     if showBack {
-                         HStack(spacing: 20) { // ボタン間隔調整
-                             // 「まだ」ボタン
-                             Button {
-                                 markAsLearning(card: currentCard)
-                                 triggerHapticFeedback()
-                                 goToNextCard()
-                             } label: {
-                                 Label("まだ", systemImage: "flame.fill")
-                                     .font(.headline)
-                                     .padding()
-                                     .frame(maxWidth: .infinity)
-                             }
-                             .buttonStyle(.bordered)
-                             .tint(.orange)
-
-                             // 「覚えた」ボタン
-                             Button {
-                                 markAsMastered(card: currentCard)
-                                 triggerHapticFeedback()
-                                 goToNextCard()
-                             } label: {
-                                 Label("覚えた", systemImage: "checkmark.circle.fill")
-                                     .font(.headline)
-                                     .padding()
-                                     .frame(maxWidth: .infinity)
-                             }
-                             .buttonStyle(.borderedProminent)
-                             .tint(.green)
-                         }
-                         .padding(.horizontal, 30)
-                         .padding(.bottom, 40)
-                         .transition(.opacity.combined(with: .scale(scale: 0.9))) // ボタン表示アニメーション
-                     } else {
-                         // 裏面表示前は高さを確保するためのスペーサー
-                         Spacer().frame(height: 80) // ボタン部分と同じくらいの高さを確保
-                         .padding(.bottom, 40)
-                     }
-                 }
-                 // View全体のアニメーション（カード切り替え時など）
-                 .transition(.asymmetric(insertion: .scale, removal: .opacity))
-
-             } else {
-                 // cardsToLearnが空の場合やロード中の表示 (loadCardsでdismissされるため、基本ここには来ないはず)
-                 VStack {
-                     ProgressView() // インジケーターを表示
-                         .padding(.bottom)
-                     Text("学習するカードを準備中...")
-                         .foregroundColor(.secondary)
-                 }
-                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                 .onAppear {
-                      // Viewが表示された時にカードをロード
-                      loadCards()
-                  }
-             }
+          // ボタンエリア
+          if showBack {
+            actionButtons(for: currentCard)
+              .transition(
+                .asymmetric(
+                  insertion: .scale.combined(with: .opacity),
+                  removal: .opacity
+                ))
+          } else {
+            // ボタン分のスペースを確保
+            Color.clear.frame(height: 100)
+          }
         }
-        .navigationTitle("フラッシュカード学習")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            // Viewが最初に表示される時だけロードする (戻ってきた時は再ロードしない)
-             if cardsToLearn.isEmpty { // showCompletion は削除
-                 loadCards()
-             }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showBack)
+
+      } else {
+        loadingView
+      }
+    }
+    .navigationTitle("フラッシュカード")
+    .navigationBarTitleDisplayMode(.inline)
+    .onAppear {
+      if cardsToLearn.isEmpty {
+        loadCards()
+      }
+    }
+  }
+
+  // MARK: - プログレスバー
+  private var progressBar: some View {
+    VStack(spacing: 8) {
+      HStack {
+        Text("\(currentIndex + 1) / \(cardsToLearn.count)")
+          .font(.caption)
+          .fontWeight(.medium)
+          .foregroundStyle(.secondary)
+
+        Spacer()
+
+        Text("\(Int(Double(currentIndex) / Double(max(cardsToLearn.count, 1)) * 100))%")
+          .font(.caption)
+          .fontWeight(.bold)
+          .foregroundStyle(.blue)
+      }
+
+      GeometryReader { geometry in
+        ZStack(alignment: .leading) {
+          RoundedRectangle(cornerRadius: 4)
+            .fill(Color.gray.opacity(0.15))
+            .frame(height: 6)
+
+          RoundedRectangle(cornerRadius: 4)
+            .fill(
+              LinearGradient(
+                colors: [.blue, .purple.opacity(0.8)],
+                startPoint: .leading,
+                endPoint: .trailing
+              )
+            )
+            .frame(
+              width: max(
+                0, geometry.size.width * CGFloat(currentIndex) / CGFloat(max(cardsToLearn.count, 1))
+              ),
+              height: 6
+            )
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentIndex)
         }
+      }
+      .frame(height: 6)
     }
+  }
 
-    // 「まだ」ボタンのアクション
-    private func markAsLearning(card: WordCard) {
-        card.status = .learning
-        card.lastReviewedAt = Date()
-        // SwiftDataは変更を自動保存する傾向があるが、確実に保存したい場合は↓
-        // try? modelContext.save()
+  // MARK: - フラッシュカード
+  private func flashCard(for card: WordCard) -> some View {
+    ZStack {
+      // カード背景
+      RoundedRectangle(cornerRadius: 24)
+        .fill(Color(uiColor: .systemBackground))
+        .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 10)
+        .overlay(
+          RoundedRectangle(cornerRadius: 24)
+            .stroke(
+              LinearGradient(
+                colors: showBack
+                  ? [.blue.opacity(0.5), .purple.opacity(0.5)]
+                  : [.green.opacity(0.4), .blue.opacity(0.4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              ),
+              lineWidth: 2
+            )
+        )
+
+      // カードコンテンツ
+      VStack(spacing: 16) {
+        // 表/裏ラベル
+        HStack {
+          Text(showBack ? "裏面" : "表面")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+              Capsule()
+                .fill(showBack ? Color.blue : Color.green)
+            )
+
+          Spacer()
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+
+        Spacer()
+
+        // メインテキスト
+        Text(showBack ? card.backText : card.frontText)
+          .font(.system(size: 36, weight: .bold, design: .rounded))
+          .minimumScaleFactor(0.4)
+          .lineLimit(nil)
+          .multilineTextAlignment(.center)
+          .padding(.horizontal, 24)
+
+        Spacer()
+
+        // タップヒント
+        if !showBack {
+          VStack(spacing: 4) {
+            Image(systemName: "hand.tap.fill")
+              .font(.system(size: 20))
+              .foregroundStyle(.secondary)
+            Text("タップして裏面を表示")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          .padding(.bottom, 20)
+        }
+      }
     }
-
-    // 「覚えた」ボタンのアクション
-    private func markAsMastered(card: WordCard) {
-        card.status = .mastered
-        card.lastReviewedAt = Date()
-        // try? modelContext.save()
+    .frame(height: 350)
+    .padding(.horizontal, 24)
+    .contentShape(Rectangle())
+    .onTapGesture {
+      withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        showBack.toggle()
+      }
     }
+  }
 
-    // 次のカードへ進む
-    private func goToNextCard() {
-         // アニメーションのため少し遅延させる（任意）
-         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-             if currentIndex + 1 < cardsToLearn.count {
-                 // 次のカードへ
-                 withAnimation {
-                     currentIndex += 1
-                     showBack = false // 次のカードは表面から表示
-                 }
-             } else {
-                 // 全てのカードが終了
-                 wordbook.lastStudiedAt = Date() // 最終学習日時を更新
+  // MARK: - アクションボタン
+  private func actionButtons(for card: WordCard) -> some View {
+    HStack(spacing: 16) {
+      // まだボタン
+      Button {
+        markAsLearning(card: card)
+        triggerHapticFeedback()
+        goToNextCard()
+      } label: {
+        VStack(spacing: 6) {
+          ZStack {
+            Circle()
+              .fill(
+                LinearGradient(
+                  colors: [.orange, .red.opacity(0.8)],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+              .frame(width: 60, height: 60)
+              .shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 4)
 
-                 // --- 変更点：完了画面を表示せずに即座に前の画面に戻る ---
-                 dismiss()
-                 // -----------------------------------------------------
+            Image(systemName: "flame.fill")
+              .font(.system(size: 24, weight: .semibold))
+              .foregroundStyle(.white)
+          }
 
-                 // 念のため保存 (学習結果を確実に反映させたい場合)
-                 // try? modelContext.save()
-             }
-         }
-     }
+          Text("まだ")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.primary)
+        }
+      }
+      .buttonStyle(ScaleButtonStyle())
 
-     private func triggerHapticFeedback(){
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.prepare()
-        generator.impactOccurred()
-        print("motion")
-     }
+      Spacer()
+
+      // 覚えたボタン
+      Button {
+        markAsMastered(card: card)
+        triggerHapticFeedback()
+        goToNextCard()
+      } label: {
+        VStack(spacing: 6) {
+          ZStack {
+            Circle()
+              .fill(
+                LinearGradient(
+                  colors: [.green, .teal.opacity(0.8)],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+              .frame(width: 60, height: 60)
+              .shadow(color: .green.opacity(0.4), radius: 8, x: 0, y: 4)
+
+            Image(systemName: "checkmark")
+              .font(.system(size: 24, weight: .bold))
+              .foregroundStyle(.white)
+          }
+
+          Text("覚えた")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.primary)
+        }
+      }
+      .buttonStyle(ScaleButtonStyle())
+    }
+    .padding(.horizontal, 60)
+    .padding(.bottom, 40)
+  }
+
+  // MARK: - ローディングビュー
+  private var loadingView: some View {
+    VStack(spacing: 16) {
+      ProgressView()
+        .scaleEffect(1.2)
+      Text("学習するカードを準備中...")
+        .foregroundColor(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .onAppear {
+      loadCards()
+    }
+  }
+
+  // MARK: - アクション
+  private func markAsLearning(card: WordCard) {
+    card.status = .learning
+    card.lastReviewedAt = Date()
+  }
+
+  private func markAsMastered(card: WordCard) {
+    card.status = .mastered
+    card.lastReviewedAt = Date()
+  }
+
+  private func goToNextCard() {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      if currentIndex + 1 < cardsToLearn.count {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+          currentIndex += 1
+          showBack = false
+        }
+      } else {
+        wordbook.lastStudiedAt = Date()
+        dismiss()
+      }
+    }
+  }
+
+  private func triggerHapticFeedback() {
+    let generator = UIImpactFeedbackGenerator(style: .heavy)
+    generator.prepare()
+    generator.impactOccurred()
+  }
 }
 
-// プレビュー用
+// MARK: - スケールボタンスタイル
+struct ScaleButtonStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
+      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+  }
+}
+
+// プレビュー
 #if DEBUG
-#Preview {
-     // NavigationStack内でプレビューしないとタイトルが表示されない場合がある
-     NavigationStack {
-         // PreviewContainerからサンプルWordbookを取得して渡す
-         LearningView(wordbook: PreviewContainer.sampleWordbooks[0])
-     }
-     // 関連データ付きのコンテナを使用
-     .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
-}
+  #Preview {
+    NavigationStack {
+      LearningView(wordbook: PreviewContainer.sampleWordbooks[0])
+    }
+    .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
+  }
 #endif

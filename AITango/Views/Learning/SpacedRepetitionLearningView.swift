@@ -6,9 +6,7 @@ import SwiftUI
 // 分散学習用の学習画面
 struct SpacedRepetitionLearningView: View {
   @Environment(\.dismiss) private var dismiss
-  // 親View (LearningTabView) から modelContext を受け取る
   @Environment(\.modelContext) private var modelContext
-  // 渡されたカードリストを保持し、内部で操作可能にする
   @State var cardsToReview: [WordCard]
 
   @State private var currentIndex: Int = 0
@@ -16,192 +14,387 @@ struct SpacedRepetitionLearningView: View {
   @State private var showCompletion: Bool = false
 
   var body: some View {
-    VStack {
-      if showCompletion {
-        // 学習完了画面
-        VStack(spacing: 20) {
-          Image(systemName: "checkmark.circle.fill")
-            .resizable().scaledToFit().frame(width: 80, height: 80).foregroundColor(.green)
-          Text("復習完了！").font(.largeTitle)
-          Text("お疲れ様でした！").font(.title2)
-          Button("閉じる") { dismiss() }
-            .padding(.top, 30).buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    ZStack {
+      // 背景グラデーション
+      LinearGradient(
+        colors: [
+          Color(uiColor: .systemBackground),
+          Color.orange.opacity(0.05),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea()
 
+      if showCompletion {
+        completionView
       } else if currentIndex < cardsToReview.count {
         let currentCard = cardsToReview[currentIndex]
-        // --- カード表示 ---
-        ZStack {
-          RoundedRectangle(cornerRadius: 20)
-            .fill(.background)  // 背景色を利用
-            .shadow(color: .gray.opacity(0.4), radius: 8, x: 0, y: 4)
-            .overlay(
-              RoundedRectangle(cornerRadius: 20)
-                .stroke(showBack ? Color.blue.opacity(0.6) : Color.green.opacity(0.6), lineWidth: 2)
-            )
 
-          VStack {
-            Spacer()
-            Text(showBack ? currentCard.backText : currentCard.frontText)
-              .font(.system(size: 40, weight: .bold))
-              .minimumScaleFactor(0.5)  // 自動縮小
-              .lineLimit(nil)  // 複数行
-              .multilineTextAlignment(.center)
-              .padding(30)  // 内側の余白
-            Spacer()
-            if !showBack {
-              Text("タップして裏面を表示")
-                .font(.caption)
-                .foregroundColor(.gray)
-                .padding(.bottom)
-            }
+        VStack(spacing: 0) {
+          // プログレスバー
+          progressBar
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+
+          Spacer()
+
+          // フラッシュカード
+          flashCard(for: currentCard)
+
+          Spacer()
+
+          // SRS評価ボタン
+          if showBack {
+            srsButtons(for: currentCard)
+              .transition(
+                .asymmetric(
+                  insertion: .scale.combined(with: .opacity),
+                  removal: .opacity
+                ))
+          } else {
+            Color.clear.frame(height: 140)
           }
-          .padding(.vertical)
         }
-        .frame(minHeight: 250, maxHeight: 400)
-        .padding(.horizontal, 30).padding(.top, 20)
-        .contentShape(Rectangle())  // タップ領域を広げる
-        .onTapGesture { withAnimation { showBack.toggle() } }
-
-        // 進捗表示
-        Text("\(currentIndex + 1) / \(cardsToReview.count)")
-          .font(.caption).foregroundColor(.gray).padding(.top)
-
-        Spacer()  // ボタンを下に
-
-        // --- SRS評価ボタン ---
-        if showBack {
-          HStack(spacing: 10) {
-            // 評価ボタン（例：難しい、普通、簡単）
-            // quality は SM-2 アルゴリズムなどに応じて調整
-            Button("難しい") { processAnswer(quality: 1, card: currentCard) }
-              .buttonStyle(SRSButtonStyle(color: .red))
-              .onTapGesture {
-                triggerHapticFeedback()
-              }
-            Button("普通") { processAnswer(quality: 3, card: currentCard) }
-              .buttonStyle(SRSButtonStyle(color: .orange))
-              .onTapGesture {
-                triggerHapticFeedback()
-              }
-            Button("簡単") { processAnswer(quality: 5, card: currentCard) }
-              .buttonStyle(SRSButtonStyle(color: .green))
-              .onTapGesture {
-                triggerHapticFeedback()
-              }
-          }
-          .padding(.horizontal, 20)
-          .padding(.bottom, 40)  // 下部の余白
-          .transition(.opacity.combined(with: .scale(scale: 0.9)))  // 表示アニメーション
-        } else {
-          // 裏面表示前は高さを確保
-          Spacer().frame(height: 80).padding(.bottom, 40)
-        }
-
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showBack)
       } else {
-        // カードがない or ロード中 (初期化時にチェックする方が良い)
-        VStack {
-          ProgressView()
-          Text("復習カードを読み込み中...")
-            .foregroundColor(.secondary)
-            .padding(.top)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        //  .onAppear {
-        //      // もし初期化時に cardsToReview が空だったら閉じるなどの処理
-        //      if cardsToReview.isEmpty {
-        //          print("⚠️ SpacedRepetitionLearningView: No cards to review on appear.")
-        //          dismiss()
-        //      }
-        //  }
+        loadingView
       }
     }
     .navigationTitle("復習セッション")
     .navigationBarTitleDisplayMode(.inline)
-    .navigationBarItems(leading: Button("終了") { dismiss() })  // 途中終了用
-    // .interactiveDismissDisabled() // 必要であれば下スワイプでの終了を無効化
+    .navigationBarItems(leading: Button("終了") { dismiss() })
   }
 
-  // --- SM-2 アルゴリズムに基づいた更新処理 (簡易版) ---
-  // 詳細はアルゴリズムの仕様を参照してください
-  func processAnswer(quality: Int, card: WordCard) {
-    // quality: ユーザーの回答の質 (0-5) SM-2では3以上が正解
-    //           今回は簡易的に 1:難しい, 3:普通, 5:簡単 とする
+  // MARK: - プログレスバー
+  private var progressBar: some View {
+    VStack(spacing: 8) {
+      HStack {
+        Text("\(currentIndex + 1) / \(cardsToReview.count)")
+          .font(.caption)
+          .fontWeight(.medium)
+          .foregroundStyle(.secondary)
 
-    // ガード: quality が想定外の値なら何もしない
-    guard quality >= 0 else {  // SM-2では0-5の範囲だが、ここでは負でないことを確認
+        Spacer()
+
+        Text("\(Int(Double(currentIndex) / Double(max(cardsToReview.count, 1)) * 100))%")
+          .font(.caption)
+          .fontWeight(.bold)
+          .foregroundStyle(.orange)
+      }
+
+      GeometryReader { geometry in
+        ZStack(alignment: .leading) {
+          RoundedRectangle(cornerRadius: 4)
+            .fill(Color.gray.opacity(0.15))
+            .frame(height: 6)
+
+          RoundedRectangle(cornerRadius: 4)
+            .fill(
+              LinearGradient(
+                colors: [.orange, .red.opacity(0.8)],
+                startPoint: .leading,
+                endPoint: .trailing
+              )
+            )
+            .frame(
+              width: max(
+                0,
+                geometry.size.width * CGFloat(currentIndex) / CGFloat(max(cardsToReview.count, 1))),
+              height: 6
+            )
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentIndex)
+        }
+      }
+      .frame(height: 6)
+    }
+  }
+
+  // MARK: - フラッシュカード
+  private func flashCard(for card: WordCard) -> some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 24)
+        .fill(Color(uiColor: .systemBackground))
+        .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 10)
+        .overlay(
+          RoundedRectangle(cornerRadius: 24)
+            .stroke(
+              LinearGradient(
+                colors: showBack
+                  ? [.blue.opacity(0.5), .purple.opacity(0.5)]
+                  : [.orange.opacity(0.4), .red.opacity(0.4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              ),
+              lineWidth: 2
+            )
+        )
+
+      VStack(spacing: 16) {
+        // 表/裏ラベル
+        HStack {
+          Text(showBack ? "裏面" : "表面")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+              Capsule()
+                .fill(showBack ? Color.blue : Color.orange)
+            )
+
+          Spacer()
+
+          // 単語帳名
+          if let wordbook = card.wordbook {
+            Text(wordbook.title)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+
+        Spacer()
+
+        // メインテキスト
+        Text(showBack ? card.backText : card.frontText)
+          .font(.system(size: 36, weight: .bold, design: .rounded))
+          .minimumScaleFactor(0.4)
+          .lineLimit(nil)
+          .multilineTextAlignment(.center)
+          .padding(.horizontal, 24)
+
+        Spacer()
+
+        // タップヒント
+        if !showBack {
+          VStack(spacing: 4) {
+            Image(systemName: "hand.tap.fill")
+              .font(.system(size: 20))
+              .foregroundStyle(.secondary)
+            Text("タップして裏面を表示")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          .padding(.bottom, 20)
+        }
+      }
+    }
+    .frame(height: 320)
+    .padding(.horizontal, 24)
+    .contentShape(Rectangle())
+    .onTapGesture {
+      withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        showBack.toggle()
+      }
+    }
+  }
+
+  // MARK: - SRS評価ボタン
+  private func srsButtons(for card: WordCard) -> some View {
+    VStack(spacing: 12) {
+      Text("この単語の習熟度は？")
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+
+      HStack(spacing: 12) {
+        // 難しい
+        SRSButton(
+          title: "難しい",
+          icon: "xmark",
+          colors: [.red, .orange.opacity(0.8)],
+          action: {
+            processAnswer(quality: 1, card: card)
+          }
+        )
+
+        // 普通
+        SRSButton(
+          title: "普通",
+          icon: "minus",
+          colors: [.orange, .yellow.opacity(0.8)],
+          action: {
+            processAnswer(quality: 3, card: card)
+          }
+        )
+
+        // 簡単
+        SRSButton(
+          title: "簡単",
+          icon: "checkmark",
+          colors: [.green, .teal.opacity(0.8)],
+          action: {
+            processAnswer(quality: 5, card: card)
+          }
+        )
+      }
+    }
+    .padding(.horizontal, 20)
+    .padding(.bottom, 40)
+  }
+
+  // MARK: - 完了画面
+  private var completionView: some View {
+    VStack(spacing: 24) {
+      // アイコン
+      ZStack {
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: [.green.opacity(0.2), .teal.opacity(0.1)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+          .frame(width: 120, height: 120)
+
+        Image(systemName: "checkmark.seal.fill")
+          .font(.system(size: 56))
+          .foregroundStyle(
+            LinearGradient(
+              colors: [.green, .teal],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+      }
+
+      VStack(spacing: 8) {
+        Text("復習完了！")
+          .font(.largeTitle)
+          .fontWeight(.bold)
+
+        Text("お疲れ様でした！\n今日の復習が完了しました。")
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
+      }
+
+      // 統計
+      HStack(spacing: 20) {
+        completionStat(
+          value: "\(cardsToReview.count)", label: "復習したカード", icon: "rectangle.stack.fill",
+          color: .blue)
+      }
+      .padding(.top, 8)
+
+      Button {
+        dismiss()
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "xmark.circle.fill")
+          Text("閉じる")
+        }
+        .font(.headline)
+        .foregroundStyle(.white)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 40)
+        .background(
+          LinearGradient(
+            colors: [.blue, .purple.opacity(0.8)],
+            startPoint: .leading,
+            endPoint: .trailing
+          )
+        )
+        .clipShape(Capsule())
+        .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+      }
+      .padding(.top, 16)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private func completionStat(value: String, label: String, icon: String, color: Color) -> some View
+  {
+    VStack(spacing: 4) {
+      HStack(spacing: 4) {
+        Image(systemName: icon)
+          .font(.caption)
+        Text(value)
+          .font(.system(size: 24, weight: .bold, design: .rounded))
+      }
+      .foregroundStyle(color)
+
+      Text(label)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+    .padding(.horizontal, 24)
+    .padding(.vertical, 12)
+    .background(
+      RoundedRectangle(cornerRadius: 12)
+        .fill(color.opacity(0.1))
+    )
+  }
+
+  // MARK: - ローディングビュー
+  private var loadingView: some View {
+    VStack(spacing: 16) {
+      ProgressView()
+        .scaleEffect(1.2)
+      Text("復習カードを読み込み中...")
+        .foregroundColor(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  // MARK: - SM-2 アルゴリズム処理
+  func processAnswer(quality: Int, card: WordCard) {
+    triggerHapticFeedback()
+
+    guard quality >= 0 else {
       print("Error: Invalid quality value: \(quality)")
       return
     }
 
     if quality < 3 {
-      // 間違い or 難しい場合: 間隔をリセット
-      card.interval = 1  // 次の復習は1日後
-      // SM-2 では連続正解回数(repetitions)もリセットする
+      card.interval = 1
     } else {
-      // 正解した場合: 新しい間隔とEaseFactorを計算
-      if card.interval == 0 {  // 最初のレビューの場合
+      if card.interval == 0 {
         card.interval = 1
-      } else if card.interval == 1 {  // 2回目のレビューの場合
-        card.interval = 6  // SM-2のデフォルトでは6日後
-      } else {  // 3回目以降のレビューの場合
-        // 新しい間隔 = 前回の間隔 * EaseFactor
+      } else if card.interval == 1 {
+        card.interval = 6
+      } else {
         let newInterval = round(Double(card.interval) * card.easeFactor)
-        card.interval = Int(max(1, newInterval))  // 最低1日以上
+        card.interval = Int(max(1, newInterval))
       }
 
-      // EaseFactorの更新: 簡単なほど値が大きくなる
-      // EF' = EF + [0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)]
-      // q は 0-5 の評価値
       let easeFactorDelta =
         (0.1 - (5.0 - Double(quality)) * (0.08 + (5.0 - Double(quality)) * 0.02))
-      card.easeFactor = max(1.3, card.easeFactor + easeFactorDelta)  // EaseFactorの最小値は1.3
+      card.easeFactor = max(1.3, card.easeFactor + easeFactorDelta)
     }
 
-    // 次の復習日を計算 (現在時刻を基準にする)
     let now = Date()
-    // interval日後の午前0時を次の復習日とする (日付単位で管理)
     if let nextDate = Calendar.current.date(byAdding: .day, value: card.interval, to: now) {
       card.nextReviewDate = Calendar.current.startOfDay(for: nextDate)
     } else {
-      // 計算失敗時のフォールバック (例: 3日後)
       card.nextReviewDate = Calendar.current.date(byAdding: .day, value: 3, to: now)
-      print("Error calculating next review date, setting fallback.")
     }
 
-    card.lastReviewedAt = now  // 最終レビュー日時を更新
+    card.lastReviewedAt = now
 
-    // status の更新ロジック (例)
     if quality < 3 {
-      card.status = .learning  // 間違えたら学習中に戻す
-    } else if card.interval > 30 {  // 例えば30日以上の間隔になったら習得済みとする
+      card.status = .learning
+    } else if card.interval > 30 {
       card.status = .mastered
     } else {
       card.status = .learning
     }
 
-    // 変更を永続化 (SwiftDataは自動保存が多いが、念のため)
-    // do {
-    //     try modelContext.save()
-    // } catch {
-    //     print("Failed to save card update: \(error)")
-    // }
-
-    // 次のカードへ (アニメーションのために少し遅延)
     goToNextCard()
   }
 
-  // 次のカードへ進む
   private func goToNextCard() {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {  // 少し遅延させて更新を反映
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
       if currentIndex + 1 < cardsToReview.count {
-        withAnimation(.easeIn(duration: 0.2)) {  // 切り替えアニメーション
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
           currentIndex += 1
-          showBack = false  // 次のカードは表面から
+          showBack = false
         }
       } else {
-        // 全てのカードが終了
         withAnimation {
           showCompletion = true
         }
@@ -213,47 +406,60 @@ struct SpacedRepetitionLearningView: View {
     let generator = UIImpactFeedbackGenerator(style: .heavy)
     generator.prepare()
     generator.impactOccurred()
-    print("motion")
   }
-
 }
 
+// MARK: - SRSボタンコンポーネント
+struct SRSButton: View {
+  let title: String
+  let icon: String
+  let colors: [Color]
+  let action: () -> Void
 
+  var body: some View {
+    Button(action: action) {
+      VStack(spacing: 6) {
+        ZStack {
+          Circle()
+            .fill(
+              LinearGradient(
+                colors: colors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+            .frame(width: 52, height: 52)
+            .shadow(color: colors[0].opacity(0.4), radius: 6, x: 0, y: 3)
 
-// SRS評価ボタンのスタイル (再掲)
-struct SRSButtonStyle: ButtonStyle {
-  let color: Color
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(.headline)
-      .padding(.vertical, 12)
+          Image(systemName: icon)
+            .font(.system(size: 20, weight: .bold))
+            .foregroundStyle(.white)
+        }
+
+        Text(title)
+          .font(.caption)
+          .fontWeight(.semibold)
+          .foregroundStyle(.primary)
+      }
       .frame(maxWidth: .infinity)
-      .foregroundColor(.white)
-      .background(color)
-      .cornerRadius(8)
-      .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-      .shadow(
-        color: .black.opacity(0.1), radius: configuration.isPressed ? 1 : 3,
-        y: configuration.isPressed ? 1 : 2)
+    }
+    .buttonStyle(ScaleButtonStyle())
   }
 }
 
-// --- プレビュー ---
+// MARK: - プレビュー
 #if DEBUG
-#Preview("Spaced Repetition Learning View") {
-  NavigationView {  // Preview 用に NavigationView でラップ
-    // PreviewContainerのヘルパーを使って復習カードを取得
-    SpacedRepetitionLearningView(cardsToReview: PreviewContainer.sampleCardsForReview())
+  #Preview("Spaced Repetition Learning View") {
+    NavigationView {
+      SpacedRepetitionLearningView(cardsToReview: PreviewContainer.sampleCardsForReview())
+    }
+    .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
   }
-  // プレビュー用にコンテナとコンテキストを設定
-  .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
-  // .environment(\.modelContext, PreviewContainer.previewInMemoryWithLinkedData.mainContext) // この行は通常不要
-}
 
-#Preview("Spaced Repetition Learning View (Empty)") {
-  NavigationView {
-    SpacedRepetitionLearningView(cardsToReview: [])  // 空の配列でテスト
+  #Preview("Spaced Repetition Learning View (Empty)") {
+    NavigationView {
+      SpacedRepetitionLearningView(cardsToReview: [])
+    }
+    .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
   }
-  .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
-}
 #endif
