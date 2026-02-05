@@ -1,59 +1,91 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WordCardRow: View {
-    let card: WordCard // 表示するカード
+  let card: WordCard
 
-    var body: some View {
-        HStack {
-            // 表面と裏面を縦に表示
-            VStack(alignment: .leading) {
-                Text(card.frontText)
-                    .font(.headline)
-                Text(card.backText)
-                    .font(.subheadline)
-                    .foregroundColor(.gray) // 裏面は少し薄く
-            }
-            Spacer() // 右側にスペースを空ける
-
-            // 学習ステータスアイコン表示
-            Image(systemName: statusIcon(for: card.status))
-                 .foregroundColor(statusColor(for: card.status))
-                 .font(.subheadline) // アイコンサイズ調整
-                 .padding(.leading, 5) // 左側に少し余白
-        }
-        .padding(.vertical, 4) // 上下の余白
+  // ステータスに応じた色
+  private var statusColor: Color {
+    switch card.status {
+    case .new: return Color.gray
+    case .learning: return Color.orange
+    case .mastered: return Color.green
     }
+  }
 
-     // ステータスに応じたアイコン名を返すヘルパー
-     private func statusIcon(for status: LearningStatus) -> String {
-         switch status {
-         case .new: return "circle" // 新規
-         case .learning: return "flame.fill" // 学習中
-         case .mastered: return "checkmark.circle.fill" // 習得済み
-         }
-     }
+  // ステータスに応じたアイコン
+  private var statusIcon: String {
+    switch card.status {
+    case .new: return "circle"
+    case .learning: return "flame.fill"
+    case .mastered: return "checkmark.circle.fill"
+    }
+  }
 
-     // ステータスに応じた色を返すヘルパー
-     private func statusColor(for status: LearningStatus) -> Color {
-         switch status {
-         case .new: return .gray
-         case .learning: return .orange
-         case .mastered: return .green
-         }
-     }
+  // ステータスに応じたラベル
+  private var statusLabel: String {
+    switch card.status {
+    case .new: return "新規"
+    case .learning: return "学習中"
+    case .mastered: return "習得"
+    }
+  }
+
+  var body: some View {
+    HStack(spacing: 14) {
+      // ステータスアイコン
+      ZStack {
+        Circle()
+          .fill(statusColor.opacity(0.15))
+          .frame(width: 44, height: 44)
+
+        Image(systemName: statusIcon)
+          .font(.system(size: 18, weight: .semibold))
+          .foregroundStyle(statusColor)
+      }
+
+      // コンテンツ
+      VStack(alignment: .leading, spacing: 4) {
+        Text(card.frontText)
+          .font(.headline)
+          .fontWeight(.semibold)
+          .foregroundStyle(.primary)
+          .lineLimit(1)
+
+        Text(card.backText)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+      .frame(height: 44, alignment: .leading)
+
+      Spacer()
+
+      // ステータスバッジ
+      Text(statusLabel)
+        .font(.caption2)
+        .fontWeight(.medium)
+        .foregroundStyle(statusColor)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+          Capsule()
+            .fill(statusColor.opacity(0.12))
+        )
+    }
+    .padding(.vertical, 8)
+  }
 }
 
 // プレビュー
 #if DEBUG
-#Preview {
-    List { // リスト内での表示を確認
-        WordCardRow(card: PreviewContainer.sampleCards[0])
-        WordCardRow(card: PreviewContainer.sampleCards[1])
-        WordCardRow(card: PreviewContainer.sampleCards[2])
+  #Preview {
+    List {
+      WordCardRow(card: PreviewContainer.sampleCards[0])
+      WordCardRow(card: PreviewContainer.sampleCards[1])
+      WordCardRow(card: PreviewContainer.sampleCards[2])
     }
-    .modelContainer(PreviewContainer.previewInMemory) // コンテナ設定
-    // .modelContainer(previewContainer) // PreviewContainer.swift を使う場合
+    .modelContainer(PreviewContainer.previewInMemory)
     .listStyle(.plain)
-}
+  }
 #endif
