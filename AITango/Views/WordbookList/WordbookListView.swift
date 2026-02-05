@@ -7,6 +7,7 @@ struct WordbookListView: View {
     [Wordbook]
   @State private var showingAddWordbookSheet: Bool = false
   @State private var searchText: String = ""
+  @FocusState private var isSearchFocused: Bool
 
   // 検索テキストに基づいてフィルタリング
   var filteredWordbooks: [Wordbook] {
@@ -19,16 +20,22 @@ struct WordbookListView: View {
 
   var body: some View {
     NavigationStack {
-      Group {
+      ZStack {
         if wordbooks.isEmpty {
           emptyStateView
-        } else if filteredWordbooks.isEmpty && !searchText.isEmpty {
-          ContentUnavailableView.search(text: searchText)
-            .searchable(text: $searchText, prompt: "単語帳を検索")
         } else {
+          // リストビューは常に存在させる（ビュー構造を安定化）
           wordbookListView
+            .opacity(filteredWordbooks.isEmpty && !searchText.isEmpty ? 0 : 1)
+
+          // 検索結果なしの場合のオーバーレイ
+          if filteredWordbooks.isEmpty && !searchText.isEmpty {
+            ContentUnavailableView.search(text: searchText)
+          }
         }
       }
+      .searchable(text: $searchText, prompt: "単語帳を検索")
+      .searchFocused($isSearchFocused)
       .navigationTitle("Word Book")
       .sheet(isPresented: $showingAddWordbookSheet) {
         WordbookCreationView()
@@ -137,7 +144,7 @@ struct WordbookListView: View {
       }
       .searchable(text: $searchText, prompt: "単語帳を検索")
 
-      NewCardAddButton( 
+      NewCardAddButton(
         action: {
           showingAddWordbookSheet = true
         }, titleText: "New book"

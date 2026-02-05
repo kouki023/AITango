@@ -9,6 +9,7 @@ struct WordbookDetailView: View {
 
   @State private var showingAddCardSheet = false
   @State private var searchText = ""
+  @FocusState private var isSearchFocused: Bool
 
   // 表示用の単語カードリスト (ロード完了後に更新)
   @State private var loadedWordCards: [WordCard]? = nil
@@ -33,67 +34,63 @@ struct WordbookDetailView: View {
   }
 
   var body: some View {
-    VStack {
-
-      Group {
-        if loadedWordCards == nil {
-          // ロード中表示
-          ProgressView("単語カードを読み込み中...")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if loadedWordCards?.isEmpty ?? true {
-          // ロード後、データが空の場合の表示 (元のコードから復元)
-          ContentUnavailableView {
-            Label("単語カードがありません", systemImage: "square.stack.3d.up.slash.fill")
-          } description: {
-            Text("最初の単語カードを追加しましょう！")
-          } actions: {
-            Button("単語カードを追加") {
-              showingAddCardSheet = true
-            }
-            .buttonStyle(.bordered)
+    ZStack {
+      if loadedWordCards == nil {
+        // ロード中表示
+        ProgressView("単語カードを読み込み中...")
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      } else if loadedWordCards?.isEmpty ?? true {
+        // ロード後、データが空の場合の表示 (元のコードから復元)
+        ContentUnavailableView {
+          Label("単語カードがありません", systemImage: "square.stack.3d.up.slash.fill")
+        } description: {
+          Text("最初の単語カードを追加しましょう！")
+        } actions: {
+          Button("単語カードを追加") {
+            showingAddCardSheet = true
           }
-          .padding(.top, 40)  // 上部との間隔
-        } else if filteredWordCards.isEmpty && !searchText.isEmpty {
-          // 検索結果がない場合の表示
+          .buttonStyle(.bordered)
+        }
+        .padding(.top, 40)  // 上部との間隔
+      } else {
+        // カードリスト表示 (常に存在させてビュー構造を安定化)
+        ZStack(alignment: .bottomTrailing) {
+          List {
+            ForEach(filteredWordCards) { card in
+              // 各カードをタップで編集画面へ
+              if let originalCard = wordbook.words?.first(where: { $0.id == card.id }) {
+                NavigationLink(destination: WordCardEditView(wordCard: originalCard)) {
+                  WordCardRow(card: card)  // 表示は loaded/filtered のものでOK
+                }
+              } else {
+                // 念のため、一致するカードが見つからない場合の表示
+                WordCardRow(card: card)
+                  .opacity(0.5)  // 見つからない場合は半透明にするなど
+              }
+            }
+            .onDelete(perform: deleteWordCards)  // スワイプ削除
+          }
+          .listStyle(.insetGrouped)  // カードリストに適したスタイル
+          .opacity(filteredWordCards.isEmpty && !searchText.isEmpty ? 0 : 1)
+
+          NewCardAddButton(
+            action: {
+              showingAddCardSheet = true
+            }, titleText: "New Card"
+          )
+          .padding(.bottom, 30)
+          .padding(.trailing, 20)
+        }
+
+        // 検索結果なしの場合のオーバーレイ
+        if filteredWordCards.isEmpty && !searchText.isEmpty {
           ContentUnavailableView.search(text: searchText)
             .padding(.top, 40)
-            // ★ 検索中は検索バーが必要
-            .searchable(text: $searchText, prompt: "単語を検索")
-        } else {
-          // カードリスト表示
-          ZStack(alignment: .bottomTrailing) {
-            List {
-              ForEach(filteredWordCards) { card in
-                // 各カードをタップで編集画面へ
-                // WordCardEditView に渡す card も loadedWordCards から取得したものを使う方が安全
-                // NavigationLink(destination: WordCardEditView(wordCard: card)) {
-                // Find the corresponding card from the original wordbook.words or ensure WordCardEditView handles potential inconsistencies
-                if let originalCard = wordbook.words?.first(where: { $0.id == card.id }) {
-                  NavigationLink(destination: WordCardEditView(wordCard: originalCard)) {
-                    WordCardRow(card: card)  // 表示は loaded/filtered のものでOK
-                  }
-                } else {
-                  // 念のため、一致するカードが見つからない場合の表示
-                  WordCardRow(card: card)
-                    .opacity(0.5)  // 見つからない場合は半透明にするなど
-                }
-              }
-              .onDelete(perform: deleteWordCards)  // スワイプ削除
-            }
-            .listStyle(.insetGrouped)  // カードリストに適したスタイル
-            // ★ リスト表示時にも検索バーが必要
-            .searchable(text: $searchText, prompt: "単語を検索")
-            
-            NewCardAddButton(action: {
-              showingAddCardSheet = true
-            }, titleText: "New Card")
-            .padding(.bottom, 30)
-            .padding(.trailing, 20)
-            
-          }
         }
       }
     }
+    .searchable(text: $searchText, prompt: "単語を検索")
+    .searchFocused($isSearchFocused)
     .navigationTitle(wordbook.title)  // Wordbookのタイトルを表示
     // .toolbar {  // ツールバー (元のコードから復元)
     //   ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -103,7 +100,7 @@ struct WordbookDetailView: View {
     //     } label: {
     //       Label("単語カードを追加", systemImage: "plus.circle.fill")
     //     }
-        
+
     //   }
     // }
     .sheet(isPresented: $showingAddCardSheet) {  // カード追加シート
@@ -179,21 +176,20 @@ struct WordbookDetailView: View {
 
 // WordbookDetailView のプレビュー
 #if DEBUG
-#Preview {
-  // NavigationStack内でプレビュー
-  NavigationStack {
-    // PreviewContainerから取得した wordbook を @State として渡す
-    // @State を持つViewのプレビューでは、初期値を直接渡す
-    WordbookDetailView(wordbook: PreviewContainer.sampleWordbooks[1])  // データがあるものを選択
+  #Preview {
+    // NavigationStack内でプレビュー
+    NavigationStack {
+      // PreviewContainerから取得した wordbook を @State として渡す
+      // @State を持つViewのプレビューでは、初期値を直接渡す
+      WordbookDetailView(wordbook: PreviewContainer.sampleWordbooks[1])  // データがあるものを選択
+    }
+    .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)  // 関連データ付きコンテナ
   }
-  .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)  // 関連データ付きコンテナ
-}
 
-#Preview("Empty Detail") {
-  NavigationStack {
-    WordbookDetailView(wordbook: PreviewContainer.sampleWordbooks[2])  // カードがないWordbook
+  #Preview("Empty Detail") {
+    NavigationStack {
+      WordbookDetailView(wordbook: PreviewContainer.sampleWordbooks[2])  // カードがないWordbook
+    }
+    .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
   }
-  .modelContainer(PreviewContainer.previewInMemoryWithLinkedData)
-}
 #endif
-
