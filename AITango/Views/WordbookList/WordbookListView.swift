@@ -9,6 +9,11 @@ struct WordbookListView: View {
   @State private var searchText: String = ""
   @FocusState private var isSearchFocused: Bool
 
+  // 名前編集用のState
+  @State private var showingRenameAlert: Bool = false
+  @State private var wordbookToRename: Wordbook?
+  @State private var newWordbookName: String = ""
+
   // 検索テキストに基づいてフィルタリング
   var filteredWordbooks: [Wordbook] {
     if searchText.isEmpty {
@@ -39,6 +44,18 @@ struct WordbookListView: View {
       .navigationTitle("Word Book")
       .sheet(isPresented: $showingAddWordbookSheet) {
         WordbookCreationView()
+      }
+      .alert("単語帳の名前を変更", isPresented: $showingRenameAlert) {
+        TextField("新しい名前", text: $newWordbookName)
+        Button("キャンセル", role: .cancel) {
+          wordbookToRename = nil
+          newWordbookName = ""
+        }
+        Button("変更") {
+          renameWordbook()
+        }
+      } message: {
+        Text("新しい名前を入力してください")
       }
     }
   }
@@ -129,6 +146,14 @@ struct WordbookListView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .contextMenu {
+              Button {
+                wordbookToRename = wordbook
+                newWordbookName = wordbook.title
+                showingRenameAlert = true
+              } label: {
+                Label("名前を変更", systemImage: "pencil")
+              }
+
               Button(role: .destructive) {
                 if let index = filteredWordbooks.firstIndex(where: { $0.id == wordbook.id }) {
                   deleteWordbooks(offsets: IndexSet(integer: index))
@@ -159,6 +184,19 @@ struct WordbookListView: View {
     withAnimation(.easeInOut(duration: 0.3)) {
       offsets.map { filteredWordbooks[$0] }.forEach(modelContext.delete)
     }
+  }
+
+  // 名前変更処理
+  private func renameWordbook() {
+    guard let wordbook = wordbookToRename else { return }
+    let trimmedName = newWordbookName.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedName.isEmpty {
+      withAnimation(.easeInOut(duration: 0.3)) {
+        wordbook.title = trimmedName
+      }
+    }
+    wordbookToRename = nil
+    newWordbookName = ""
   }
 }
 
