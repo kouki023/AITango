@@ -395,6 +395,8 @@ struct SpacedRepetitionLearningView: View {
           showBack = false
         }
       } else {
+        // 学習完了時にレビュー依頼を表示（初回のみ）
+        ReviewRequestManager.shared.requestReviewIfNeeded()
         withAnimation {
           showCompletion = true
         }

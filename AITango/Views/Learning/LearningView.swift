@@ -320,6 +320,8 @@ struct LearningView: View {
         }
       } else {
         wordbook.lastStudiedAt = Date()
+        // 学習完了時にレビュー依頼を表示（初回のみ）
+        ReviewRequestManager.shared.requestReviewIfNeeded()
         dismiss()
       }
     }
