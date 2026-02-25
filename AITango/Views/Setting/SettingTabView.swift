@@ -23,6 +23,18 @@ struct SettingTabView: View {
   var body: some View {
     NavigationStack {
       Form {
+        // アプリ情報セクション
+        Section("アプリ") {
+          HStack {
+            Text("バージョン")
+              .fontWeight(.medium)
+            Spacer()
+            Text("\(AppVersion)")
+              .foregroundStyle(Color.gray)
+              .fontWeight(.medium)
+          }
+        }
+
         // 通知設定セクション
         Section("通知") {
           Toggle(isOn: $isNotificationEnabled) {
@@ -71,16 +83,7 @@ struct SettingTabView: View {
           }
         }
 
-        Section("アプリ") {
-          HStack {
-            Text("バージョン")
-              .fontWeight(.medium)
-            Spacer()
-            Text("\(AppVersion)")
-              .foregroundStyle(Color.gray)
-              .fontWeight(.medium)
-          }
-        }
+        
         Section("その他") {
           Button("アプリを評価する") {
             requestReview()
