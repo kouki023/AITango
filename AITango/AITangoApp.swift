@@ -9,6 +9,7 @@ import StoreKit
 import SwiftData  // <--- 追加
 import SwiftUI
 import UIKit
+import UserNotifications
 
 // レビュー依頼を管理（学習完了時にのみ表示）
 final class ReviewRequestManager {
@@ -53,7 +54,26 @@ struct AITangoApp: App {
   var body: some Scene {
     WindowGroup {
       ContentView()  // メインのViewを呼び出し
+        .onAppear {
+          scheduleNotificationsOnLaunch()
+        }
     }
     .modelContainer(sharedModelContainer)  // ModelContainerを環境に注入 --- 追加 ---
+  }
+
+  /// アプリ起動時に分散学習の復習通知をスケジュールする
+  private func scheduleNotificationsOnLaunch() {
+    let manager = NotificationManager.shared
+    guard manager.isEnabled else { return }
+
+    // SwiftDataから全カードを取得
+    let context = sharedModelContainer.mainContext
+    let descriptor = FetchDescriptor<WordCard>()
+    do {
+      let allCards = try context.fetch(descriptor)
+      manager.scheduleReviewNotifications(cards: allCards)
+    } catch {
+      print("通知スケジュール用カード取得エラー: \(error.localizedDescription)")
+    }
   }
 }
