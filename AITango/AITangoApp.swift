@@ -84,12 +84,27 @@ final class ReviewRequestManager {
   /// 学習完了時に呼び出す。まだレビュー依頼をしていなければダイアログを表示する。
   func requestReviewIfNeeded() {
     guard !UserDefaults.standard.bool(forKey: hasRequestedKey) else { return }
-    if let scene = UIApplication.shared.connectedScenes
-      .compactMap({ $0 as? UIWindowScene })
-      .first(where: { $0.activationState == .foregroundActive })
-    {
-      SKStoreReviewController.requestReview(in: scene)
-      UserDefaults.standard.set(true, forKey: hasRequestedKey)
+
+    if #available(iOS 18.0, *) {
+      // iOS 18以降: 新しい AppStore API を使用
+      if let scene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first(where: { $0.activationState == .foregroundActive })
+      {
+        Task {
+          await AppStore.requestReview(in: scene)
+        }
+        UserDefaults.standard.set(true, forKey: hasRequestedKey)
+      }
+    } else {
+      // iOS 18未満: 従来の SKStoreReviewController を使用
+      if let scene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first(where: { $0.activationState == .foregroundActive })
+      {
+        SKStoreReviewController.requestReview(in: scene)
+        UserDefaults.standard.set(true, forKey: hasRequestedKey)
+      }
     }
   }
 }
