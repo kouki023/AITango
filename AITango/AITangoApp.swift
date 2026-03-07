@@ -7,7 +7,7 @@
 
 import BackgroundTasks
 import StoreKit
-import SwiftData  // <--- 追加
+import SwiftData
 import SwiftUI
 import UIKit
 import UserNotifications
