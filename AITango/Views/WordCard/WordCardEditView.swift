@@ -56,6 +56,10 @@ struct WordCardEditView: View {
           .padding(.horizontal, 16)
           .padding(.vertical, 16)
         }
+        // キーボードの外をタップして閉じる
+        .onTapGesture {
+          hideKeyboard()
+        }
       }
       .navigationTitle("単語カードを編集")
       .navigationBarTitleDisplayMode(.inline)
@@ -227,6 +231,12 @@ struct WordCardEditView: View {
     wordCard.frontText = wordCard.frontText.trimmingCharacters(in: .whitespacesAndNewlines)
     wordCard.backText = wordCard.backText.trimmingCharacters(in: .whitespacesAndNewlines)
     dismiss()
+  }
+
+  // MARK: - キーボードを閉じる
+  private func hideKeyboard() {
+    UIApplication.shared.sendAction(
+      #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
   }
 }
 

@@ -136,6 +136,10 @@ struct WordCardCreationView: View {
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
     }
+    // キーボードの外をタップして閉じる
+    .onTapGesture {
+      hideKeyboard()
+    }
   }
 
   // MARK: - 入力カード
@@ -215,6 +219,10 @@ struct WordCardCreationView: View {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
+    }
+    // キーボードの外をタップして閉じる
+    .onTapGesture {
+      hideKeyboard()
     }
   }
 
