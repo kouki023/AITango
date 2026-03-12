@@ -168,6 +168,7 @@ struct WordCardCreationView: View {
       TextEditor(text: text)
         .frame(minHeight: 100)
         .padding(12)
+        .scrollContentBackground(.hidden)
         .background(
           RoundedRectangle(cornerRadius: 12)
             .fill(Color(uiColor: .systemGray6))

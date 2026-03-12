@@ -66,7 +66,7 @@ struct LearningView: View {
 
           // ボタンエリア
           if showBack {
-            actionButtons(for: currentCard)
+            actionButton
               .transition(
                 .asymmetric(
                   insertion: .scale.combined(with: .opacity),
@@ -214,75 +214,34 @@ struct LearningView: View {
   }
 
   // MARK: - アクションボタン
-  private func actionButtons(for card: WordCard) -> some View {
-    HStack(spacing: 16) {
-      // まだボタン
-      Button {
-        markAsLearning(card: card)
-        triggerHapticFeedback()
-        goToNextCard()
-      } label: {
-        VStack(spacing: 6) {
-          ZStack {
-            Circle()
-              .fill(
-                LinearGradient(
-                  colors: [.orange, .red.opacity(0.8)],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-              .frame(width: 60, height: 60)
-              .shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 4)
+  private var actionButton: some View {
+    let isLast = currentIndex + 1 >= cardsToLearn.count
 
-            Image(systemName: "flame.fill")
-              .font(.system(size: 24, weight: .semibold))
-              .foregroundStyle(.white)
-          }
-
-          Text("まだ")
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .foregroundStyle(.primary)
-        }
+    return Button {
+      triggerHapticFeedback()
+      goToNextCard()
+    } label: {
+      HStack(spacing: 8) {
+        Image(systemName: isLast ? "checkmark.circle.fill" : "arrow.right.circle.fill")
+          .font(.system(size: 20, weight: .semibold))
+        Text(isLast ? "終了" : "次へ")
+          .font(.headline)
+          .fontWeight(.bold)
       }
-      .buttonStyle(ScaleButtonStyle())
-
-      Spacer()
-
-      // 覚えたボタン
-      Button {
-        markAsMastered(card: card)
-        triggerHapticFeedback()
-        goToNextCard()
-      } label: {
-        VStack(spacing: 6) {
-          ZStack {
-            Circle()
-              .fill(
-                LinearGradient(
-                  colors: [.green, .teal.opacity(0.8)],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-              .frame(width: 60, height: 60)
-              .shadow(color: .green.opacity(0.4), radius: 8, x: 0, y: 4)
-
-            Image(systemName: "checkmark")
-              .font(.system(size: 24, weight: .bold))
-              .foregroundStyle(.white)
-          }
-
-          Text("覚えた")
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .foregroundStyle(.primary)
-        }
-      }
-      .buttonStyle(ScaleButtonStyle())
+      .foregroundStyle(.white)
+      .padding(.vertical, 14)
+      .padding(.horizontal, 48)
+      .background(
+        LinearGradient(
+          colors: isLast ? [.green, .teal.opacity(0.8)] : [.blue, .purple.opacity(0.8)],
+          startPoint: .leading,
+          endPoint: .trailing
+        )
+      )
+      .clipShape(Capsule())
+      .shadow(color: (isLast ? Color.green : Color.blue).opacity(0.4), radius: 10, x: 0, y: 5)
     }
-    .padding(.horizontal, 60)
+    .buttonStyle(ScaleButtonStyle())
     .padding(.bottom, 40)
   }
 
@@ -301,15 +260,6 @@ struct LearningView: View {
   }
 
   // MARK: - アクション
-  private func markAsLearning(card: WordCard) {
-    card.status = .learning
-    card.lastReviewedAt = Date()
-  }
-
-  private func markAsMastered(card: WordCard) {
-    card.status = .mastered
-    card.lastReviewedAt = Date()
-  }
 
   private func goToNextCard() {
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

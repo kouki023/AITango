@@ -113,7 +113,7 @@ struct WordbookDetailView: View {
           .font(.title3)
           .fontWeight(.bold)
 
-        Text("最初の単語カードを追加して\n学習を始めましょう！")
+        Text("最初の単語カードを追加して\n学習を始めましょう!")
           .font(.subheadline)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
@@ -170,12 +170,14 @@ struct WordbookDetailView: View {
       .searchable(text: $searchText, prompt: "単語を検索")
       .searchFocused($isSearchFocused)
       .opacity(filteredWordCards.isEmpty && !searchText.isEmpty ? 0 : 1)
+      .scrollIndicators(.hidden)
 
       // 追加ボタン
       NewCardAddButton(
+        systemName: "rectangle.stack.fill.badge.plus",
         action: {
           showingAddCardSheet = true
-        }, titleText: "New Card"
+        }
       )
       .padding(.bottom, 30)
       .padding(.trailing, 20)

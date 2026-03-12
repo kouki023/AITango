@@ -1,58 +1,43 @@
 import SwiftUI
 
+struct NewCardAddButton: View {
 
-
-struct CapsuleButtonStyle: ButtonStyle {
-    // ボタンの背景色（デフォルトは青）
-    var backgroundColor: Color = .blue
-    // ボタンの文字色（デフォルトは白）
-    var foregroundColor: Color = .white
-
-    // ボタンの本体を生成するメソッド
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label // ボタンに表示されるテキストやアイコンなど
-            .padding(.horizontal, 10) // 水平方向にパディングを追加
-            .padding(.vertical, 15)   // 垂直方向にパディングを追加
-            .background(backgroundColor) // 背景色を設定
-            .foregroundColor(foregroundColor) // 文字色を設定
-            .clipShape(Capsule()) // ビューをカプセル形状にクリップ
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0) // 押されたときに少し縮小するアニメーション
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed) // アニメーション効果を追加
-    }
-}
-
-
-
-
-struct NewCardAddButton: View{
-
+    /// 表示する SF Symbol 名（配置先ごとに変更可能）
+    var systemName: String = "book.badge.plus.fill"
     let action: () -> Void
-    let titleText: String
 
-    var body: some View{
-        Button(action: action){
-            HStack{
-                Image(systemName: "plus")
-                .fontWeight(.heavy)
-
-                Text(titleText)
-                .fontWeight(.heavy)
-            }
-            //.padding()
-            
+    var body: some View {
+        Button(action: action) {
+            // SF Symbol のみ、円形ボタン
+            Image(systemName: systemName)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 65, height: 65)
+                .background(
+                    Circle()
+                        .fill(Color.accentColor)
+                        .shadow(color: Color.accentColor.opacity(0.35), radius: 8, x: 0, y: 4)
+                )
         }
-        .buttonStyle(CapsuleButtonStyle(backgroundColor: .orange)) // 作成したカプセルスタイルを適用（色をオレンジに指定）
-        
-    }
-
-}
-
-
-
-
-// プレビュー用の設定
-struct CustomButtonView_Previews: PreviewProvider {
-    static var previews: some View {
-        NewCardAddButton(action: {print("押された")}, titleText: "New Card")
+        .scaleEffect(1.0)
+        .buttonStyle(CircleAddButtonStyle())
     }
 }
+
+// MARK: - 円形ボタン用スタイル
+struct CircleAddButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Preview
+#if DEBUG
+    struct NewCardAddButton_Previews: PreviewProvider {
+        static var previews: some View {
+            NewCardAddButton(action: { print("押された") })
+        }
+    }
+#endif

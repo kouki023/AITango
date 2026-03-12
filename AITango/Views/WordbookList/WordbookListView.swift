@@ -41,7 +41,7 @@ struct WordbookListView: View {
       }
       .searchable(text: $searchText, prompt: "単語帳を検索")
       .searchFocused($isSearchFocused)
-      .navigationTitle("Word Book")
+      //.navigationTitle("Word Book")
       .sheet(isPresented: $showingAddWordbookSheet) {
         WordbookCreationView()
       }
@@ -128,7 +128,7 @@ struct WordbookListView: View {
       NewCardAddButton(
         action: {
           showingAddWordbookSheet = true
-        }, titleText: "New book"
+        }
       )
       .padding(.bottom, 30)
       .padding(.trailing, 20)
@@ -168,11 +168,12 @@ struct WordbookListView: View {
         .padding(.vertical, 12)
       }
       .searchable(text: $searchText, prompt: "単語帳を検索")
+      .scrollIndicators(.hidden)
 
       NewCardAddButton(
         action: {
           showingAddWordbookSheet = true
-        }, titleText: "New book"
+        }
       )
       .padding(.bottom, 30)
       .padding(.trailing, 20)
